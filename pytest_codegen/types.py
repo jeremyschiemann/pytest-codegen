@@ -25,4 +25,3 @@ class FileInfo(TypedDict):
     test_name: str
     test_path: Path
     functions: List[FunctionInfo]
-
