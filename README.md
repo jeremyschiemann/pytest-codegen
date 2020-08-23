@@ -34,7 +34,15 @@ ptc --help
 
 ## Suggestions & Contribution
 
-Every suggestion and contribution is welcome
+Every suggestion and contribution is welcome!
+
+Set everything up with [poetry](https://python-poetry.org/) and you are good to go :)
+```
+pip install poetry
+```
+```
+poetry install
+```
 
 ## Ressources
 - [pytest-codegen on pypi](https://pypi.org/project/pytest-codegen/)
