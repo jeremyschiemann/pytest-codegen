@@ -69,7 +69,7 @@ def _get_environment() -> Environment:
     return env
 
 
-def _collect_information(files, base_path: Path, test_dir_path: Path) -> List[FileInfo]:
+def _collect_information(files: List[Path], base_path: Path, test_dir_path: Path) -> List[FileInfo]:
     file_info_list = []
     for file in files:
         file_info = FileInfo(name=file.name,
@@ -77,7 +77,7 @@ def _collect_information(files, base_path: Path, test_dir_path: Path) -> List[Fi
                              package=".".join(os.path.relpath(file, base_path.parent)[:-3].split(os.sep)),
                              path=file.parent,
                              test_path=test_dir_path / Path(os.path.relpath(file, base_path)).parent,
-                             functions=[])
+                             functions=[])  # type: ignore
 
         file_info['test_name'] = _get_environment().get_template('filename.template').render(**file_info)
 
