@@ -1,7 +1,7 @@
 # pytest-codegen
 Pytest-codgen will statically analyze your code to create pytest function stubs.
 
-Built with [redbaron](https://redbaron.readthedocs.io/en/latest/) and [typer](https://typer.tiangolo.com/).
+Built with [redbaron](https://redbaron.readthedocs.io/en/latest/), [typer](https://typer.tiangolo.com/) and [jinja2](https://jinja.palletsprojects.com/en/2.11.x/).
 
 
 ## Goal
@@ -49,6 +49,7 @@ poetry install
 - [pytest-codegen on pypi](https://pypi.org/project/pytest-codegen/)
 - [redbaron on pypi](https://pypi.org/project/redbaron/)
 - [typer on pypi](https://pypi.org/project/typer/)
+- [jinja2 on pypi](https://pypi.org/project/Jinja2/)
 
 ## License
 This project is licensed under the terms of the MIT license.
