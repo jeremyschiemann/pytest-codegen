@@ -1,92 +1,124 @@
 import os
 from pathlib import Path
-from typing import List, Dict, Generator
+from typing import List, TypedDict
 
 import typer
+from jinja2 import Environment, FileSystemLoader
 from redbaron import RedBaron
 
+from pytest_codegen.types import FileInfo, FunctionInfo, ArgumentInfo
+
 app = typer.Typer()
+env = None
 
 
 @app.command()
 def main(package: str, test_dir: str = "./tests/unittests") -> None:
-    path = Path(package).resolve()
-    test_path = Path(test_dir).resolve()
+    package_path = Path(package).resolve()
+    test_dir_path = Path(test_dir).resolve()
 
-    files = (x for x in _collect_files(path))
-    analyzed_files = _analyze(files)
-
-    for af in analyzed_files:
-        test_file = os.path.relpath(af['original_file'], path)
-        af['test_file'] = test_path / test_file
-        pack = test_file[:-3].split(os.sep)
-        pack.insert(0, bytes(package))
-        af['package'] = ".".join(pack)
-
-    _create_test_files(analyzed_files)
-    _write_test_functions(analyzed_files)
+    files = _collect_files(package_path)
+    file_infos = _collect_information(files, package_path, test_dir_path)
+    _create_directories(file_infos)
+    _create_files(file_infos)
+    _write_files(file_infos)
 
 
-def _create_test_files(analyzed_files) -> None:
-    for file in analyzed_files:
-        if not os.path.exists(file['test_file'].parent):
-            os.makedirs(file['test_file'].parent, exist_ok=True)
+def _write_files(files: List[FileInfo]) -> None:
+    function_template = _get_environment().get_template('function.template')
+    import_template = _get_environment().get_template("import.template")
+    for file in files:
+
+        with open(file['test_path']/file['test_name'], 'r') as f:
+            root = RedBaron(f.read() or '"""Test module."""\n')
+
+        existing_functions = [function.name for function in root.find_all('def')]
+
+        for function in file['functions']:
+            if not f"test_{function['name']}" in existing_functions:
+                root.extend(["\n", "\n"])
+                root.append(function_template.render(**function))
+
+        root.insert(1, import_template.render(**file))
+        root.insert(1, "import pytest")
+
+        with open(file['test_path']/file['test_name'], 'w') as f:
+            f.write(root.dumps())
 
 
-def _write_test_functions(analyzed_files) -> None:
-    for file in analyzed_files:
+def _create_files(files: List[FileInfo]) -> None:
+    for file in files:
         try:
-            with open(file['test_file'], 'x'):
+            with open(file['test_path']/file['test_name'], 'x'):
                 pass
         except FileExistsError:
             pass
 
-        with open(file['test_file'], 'r') as f:
-            root = RedBaron(f.read() or f'"""tests for {file["package"]}."""\n')
 
-        existing = [node for node in root.find_all('def')]
-        found = {function['test_name']: function for function in file['functions']}
-        to_write = set(found) - set(existing)
-
-        for func in to_write:
-            root.extend(["\n", "\n"])
-            func_node = RedBaron(f"def {found[func]['test_name']}():\n\tpass")
-            func_node[0].insert(0, "#  TODO: write test")
-            func_node[0].insert(1, f"#  assert {found[func]['name']}()")
-            root.append(func_node.dumps())
-
-        with open(file['test_file'], "w") as f:
-            f.write(root.dumps())
-
-
-def _analyze(files: Generator[Path]) -> List[Dict]:
-    analyzed_files = []
+def _create_directories(files: List[FileInfo]) -> None:
     for file in files:
-
-        analyzed_file = dict(
-            original_file=file
-        )
-
-        with open(file, "r") as f:
-            root = RedBaron(f.read())
-            functions = root.find_all('def')
-
-            analyzed_file['functions'] = [dict(
-                name=func.name,
-                test_name=f"test_{func.name}",
-                arguments=[str(arg.name) for arg in func.arguments]
-            ) for func in functions if not func.name.startswith("_")]
-
-        if analyzed_file.get('functions', []):
-            analyzed_files.append(analyzed_file)
-    return analyzed_files
+        if not os.path.exists(file['test_path']):
+            os.makedirs(file['test_path'], exist_ok=True)
 
 
-def _collect_files(path: Path) -> Generator[Path]:
+def _get_environment() -> Environment:
+    global env
+    if not env:
+        loader = FileSystemLoader(searchpath=Path(__file__).parent / Path('templates'))
+        env = Environment(loader=loader)
+    return env
+
+
+def _collect_information(files, base_path: Path, test_dir_path: Path) -> List[FileInfo]:
+    file_info_list = []
+    for file in files:
+        file_info = FileInfo(name=file.name,
+                             module=file.name.split('.')[0],
+                             package=".".join(os.path.relpath(file, base_path.parent)[:-3].split(os.sep)),
+                             path=file.parent,
+                             test_path=test_dir_path / Path(os.path.relpath(file, base_path)).parent,
+                             functions=[])
+
+        file_info['test_name'] = _get_environment().get_template('filename.template').render(**file_info)
+
+
+        root_fst = RedBaron(file.read_text())
+
+        # collect function information
+        for function in root_fst.find_all('def'):
+
+            # TODO: properly find below fields
+            function_info = FunctionInfo(name=function.name,
+                                         is_private=function.name.startswith('_'),
+                                         docstring=function[0].find('string'),
+                                         return_type=str(function.return_annotation.value),
+                                         arguments=[])
+
+            #  collect function's argument information
+            for argument in function.arguments:
+                argument_info = ArgumentInfo(name=str(argument.name),
+                                             default=argument.value.value
+                                             if argument.value is not None else None,
+                                             type=argument.annotation.value
+                                             if argument.annotation is not None else None)
+                function_info['arguments'].append(argument_info)
+
+            file_info['functions'].append(function_info)
+        if file_info['functions']:
+            file_info_list.append(file_info)
+
+    return file_info_list
+
+
+def _collect_files(path: Path) -> List[Path]:
+    """Collect all .py files in a package."""
+    files_list: List = []
     if os.path.isdir(path):
         files = os.listdir(path)
         for file in files:
-            yield from _collect_files((Path(path) / file).absolute())
+            files_list.extend(_collect_files((Path(path) / file).absolute()))
     else:
         if path.name.endswith(".py") and not path.name.startswith("__"):
-            yield Path(path).absolute()
+            files_list.append(Path(path).absolute())
+
+    return files_list

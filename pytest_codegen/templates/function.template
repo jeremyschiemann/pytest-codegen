@@ -1,0 +1,6 @@
+@pytest.mark.skip(reason="not yet implemented")
+def test_{{name}}() -> None:
+    """Test for {{name}}."""
+    #  TODO: write test
+    #assert {{name}}({{arguments | join(', ', attribute='name')}})
+    pass
