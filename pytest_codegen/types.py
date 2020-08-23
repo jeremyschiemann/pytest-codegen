@@ -4,12 +4,14 @@ from typing import TypedDict, List, Any
 
 
 class ArgumentInfo(TypedDict):
+    """Info about an argument of a python function."""
     name: str
     type: str
     default: Any
 
 
 class FunctionInfo(TypedDict):
+    """Info about a python function."""
     name: str
     arguments: List[ArgumentInfo]
     return_type: str
@@ -18,6 +20,7 @@ class FunctionInfo(TypedDict):
 
 
 class FileInfo(TypedDict):
+    """Info about a .py file."""
     name: str
     path: Path
     module: str

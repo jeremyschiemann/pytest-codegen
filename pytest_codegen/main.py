@@ -1,3 +1,4 @@
+"""Main module which contains all necessary functions to create test stubs."""
 import os
 from pathlib import Path
 from typing import List
@@ -14,6 +15,7 @@ env = None
 
 @app.command()
 def main(package: str, test_dir: str = "./tests/unittests") -> None:
+    """Run the program."""
     package_path = Path(package).resolve()
     test_dir_path = Path(test_dir).resolve()
 
@@ -25,6 +27,7 @@ def main(package: str, test_dir: str = "./tests/unittests") -> None:
 
 
 def _write_files(files: List[FileInfo]) -> None:
+    """Write the test stubs to the test file."""
     function_template = _get_environment().get_template("function.template")
     import_template = _get_environment().get_template("import.template")
     for file in files:
@@ -47,6 +50,7 @@ def _write_files(files: List[FileInfo]) -> None:
 
 
 def _create_files(files: List[FileInfo]) -> None:
+    """Create the test files themselves."""
     for file in files:
         try:
             with open(file["test_path"] / file["test_name"], "x"):
@@ -56,12 +60,14 @@ def _create_files(files: List[FileInfo]) -> None:
 
 
 def _create_directories(files: List[FileInfo]) -> None:
+    """Create directories for test files."""
     for file in files:
         if not os.path.exists(file["test_path"]):
             os.makedirs(file["test_path"], exist_ok=True)
 
 
 def _get_environment() -> Environment:
+    """Get the jinja2 template environment."""
     global env
     if not env:
         loader = FileSystemLoader(searchpath=Path(__file__).parent / Path("templates"))
@@ -72,6 +78,7 @@ def _get_environment() -> Environment:
 def _collect_information(
     files: List[Path], base_path: Path, test_dir_path: Path
 ) -> List[FileInfo]:
+    """Collect information about all files in the list."""
     file_info_list = []
     for file in files:
         file_info = FileInfo(
