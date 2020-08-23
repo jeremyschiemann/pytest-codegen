@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pytest-codegen"
-version = "0.0.2"
+version = "0.0.3"
 description = "Automatically create pytest test signatures"
 authors = ["Jeremy Schiemann <jeremy.schiemann@gmail.com>"]
 readme = "README.md"
