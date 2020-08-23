@@ -1,0 +1,10 @@
+"""Tests for the module {{module}}."""
+from {{imports.package}}.{{imports.module}} import {{imports.funcs|join(', ')}}
+pip
+{% for func in funcs %}
+def {{func.pytest_name}}():
+    """Test for {{func.name}}."""
+    # assert {{func.name}}({{func.params|join(', ')}})
+    pass
+
+{% endfor -%}
